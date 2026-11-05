@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>TV Argentina</title>
+<meta name="description" content="Televisión argentina en vivo">
+<meta name="theme-color" content="#0c1017">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --bg-deep: #080b10;
+  --bg: #0c1017;
+  --bg-card: #141a24;
+  --bg-card-hover: #1a2230;
+  --bg-elevated: #1e2738;
+  --bg-player: #111820;
+  --accent: #5cb8e4;
+  --accent-dim: #2d7da8;
+  --accent-glow: rgba(92, 184, 228, 0.12);
+  --accent-text: #8dd0f0;
+  --text: #e2e7ec;
+  --text-secondary: #7b8592;
+  --text-dim: #4a5360;
+  --live: #4ec978;
+  --live-glow: rgba(78, 201, 120, 0.2);
+  --error: #e05252;
+  --warning: #e0a852;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-accent: rgba(92, 184, 228, 0.2);
+  --radius-lg: 16px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --font-display: 'Sora', system-ui, -apple-system, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+html { height: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+button { font-family: inherit; border: none; background: none; cursor: pointer; color: inherit; }
+input { font-family: inherit; border: none; background: none; color: inherit; outline: none; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ── Header ── */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg);
+  padding: 12px 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.header-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo svg { width: 28px; height: 28px; color: var(--accent); flex-shrink: 0; }
+.logo h1 {
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent) 0%, #fff 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-actions { display: flex; align-items: center; gap: 4px; }
+.icon-btn {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  position: relative;
+}
+.icon-btn:active { background: var(--bg-card); }
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn.cast-active { color: var(--accent); }
+.icon-btn .badge {
+  position: absolute; top: 6px; right: 6px;
+  width: 8px; height: 8px;
+  background: var(--live); border-radius: 50%;
+  border: 2px solid var(--bg);
+}
+.search-wrap {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 0 12px; height: 42px;
+  margin-bottom: 12px;
+  border: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+.search-wrap:focus-within { border-color: var(--accent-dim); }
+.search-wrap svg { width: 18px; height: 18px; color: var(--text-dim); flex-shrink: 0; }
+.search-wrap input {
+  flex: 1; height: 100%;
+  font-size: 15px;
+}
+.search-wrap input::placeholder { color: var(--text-dim); }
+.search-clear {
+  width: 24px; height: 24px;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+.search-clear.visible { display: flex; }
+.search-clear svg { width: 14px; height: 14px; }
+
+/* ── Categories ── */
+.categories {
+  display: flex; gap: 8px;
+  overflow-x: auto; scrollbar-width: none;
+  padding: 0 16px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.categories::-webkit-scrollbar { display: none; }
+.pill {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.pill:active { transform: scale(0.96); }
+.pill.active {
+  background: var(--accent);
+  color: #0a1018;
+  font-weight: 600;
+}
+.pill.fav-pill { border: 1px solid var(--border); }
+.pill.fav-pill.active { background: var(--warning); border-color: transparent; }
+
+/* ── Channel Grid ── */
+.content {
+  padding: 4px 16px 120px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 480px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 768px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+.channel-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: transform 0.15s, border-color 0.2s, background 0.2s;
+  position: relative;
+  cursor: pointer;
+}
+.channel-card:active { transform: scale(0.97); }
+.channel-card.playing {
+  border-color: var(--accent-dim);
+  background: var(--bg-card-hover);
+}
+.card-thumb {
+  width: 100%; aspect-ratio: 16/10;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-deep);
+  overflow: hidden; position: relative;
+}
+.card-thumb img {
+  max-width: 70%; max-height: 70%;
+  object-fit: contain;
+  filter: brightness(0.95);
+}
+.card-thumb .placeholder-icon {
+  color: var(--text-dim);
+  opacity: 0.4;
+}
+.card-thumb .placeholder-icon svg { width: 32px; height: 32px; }
+.card-playing-badge {
+  position: absolute; top: 6px; left: 6px;
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(0,0,0,0.7);
+  padding: 3px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 600;
+  color: var(--live);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+}
+.card-playing-badge .dot {
+  width: 6px; height: 6px;
+  background: var(--live); border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.card-fav-btn {
+  position: absolute; top: 4px; right: 4px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.5); border-radius: 50%;
+  z-index: 2;
+}
+.card-fav-btn svg { width: 16px; height: 16px; }
+.card-fav-btn.is-fav svg { color: var(--warning); fill: var(--warning); }
+.card-info { padding: 8px 10px 10px; }
+.card-name {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-group {
+  font-size: 11px; color: var(--text-dim);
+  margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Empty/Error/Loading States ── */
+.state-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 60px 32px;
+  gap: 16px;
+}
+.state-screen svg { width: 56px; height: 56px; color: var(--text-dim); opacity: 0.5; }
+.state-screen h2 {
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 600;
+}
+.state-screen p { font-size: 14px; color: var(--text-secondary); line-height: 1.5; max-width: 280px; }
+.state-screen .btn {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 600;
+  padding: 10px 24px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #0a1018;
+  transition: opacity 0.15s;
+}
+.state-screen .btn:active { opacity: 0.8; }
+
+/* ── Splash Loading ── */
+.splash {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg); gap: 20px;
+  transition: opacity 0.4s;
+}
+.splash.fade-out { opacity: 0; pointer-events: none; }
+.splash svg { width: 48px; height: 48px; color: var(--accent); }
+.splash h2 {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), #fff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Player Panel ── */
+.player-panel {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  background: var(--bg-player);
+  border-top: 1px solid var(--border);
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.player-panel.open { transform: translateY(0); }
+.player-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px 8px 16px;
+  gap: 8px;
+}
+.player-ch-info { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.player-ch-logo {
+  width: 36px; height: 36px; border-radius: var(--radius-xs);
+  background: var(--bg-deep); object-fit: contain;
+  flex-shrink: 0;
+}
+.player-ch-text { min-width: 0; }
+.player-ch-name {
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.player-ch-group { font-size: 12px; color: var(--text-dim); }
+.player-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.player-actions .icon-btn { width: 36px; height: 36px; }
+.player-actions .icon-btn svg { width: 20px; height: 20px; }
+.video-wrap {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16/9;
+  max-height: 40vh;
+}
+.video-wrap video {
+  width: 100%; height: 100%;
+  display: block;
+  background: #000;
+}
+.video-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; background: rgba(0,0,0,0.7);
+  pointer-events: none;
+  opacity: 0; transition: opacity 0.3s;
+}
+.video-overlay.visible { opacity: 1; pointer-events: auto; }
+.video-overlay .spinner { width: 36px; height: 36px; border-width: 3px; }
+.video-overlay p { font-size: 13px; color: var(--text-secondary); }
+.video-overlay .btn {
+  pointer-events: auto;
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 600;
+  padding: 8px 20px; border-radius: var(--radius-sm);
+  background: var(--bg-elevated); color: var(--text);
+  border: 1px solid var(--border);
+}
+.casting-indicator {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px;
+  font-size: 13px; color: var(--accent-text);
+  font-family: var(--font-display); font-weight: 500;
+}
+.casting-indicator svg { width: 20px; height: 20px; color: var(--accent); }
+
+/* ── Fullscreen ── */
+.player-panel.fullscreen {
+  inset: 0; transform: none;
+  display: flex; flex-direction: column;
+  border: none;
+}
+.player-panel.fullscreen .video-wrap {
+  flex: 1; max-height: none; aspect-ratio: auto;
+}
+.player-panel.fullscreen .player-header {
+  position: absolute; top: 0; left: 0; right: 0;
+  z-index: 10;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
+}
+
+/* ── Settings Modal ── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%; max-width: 480px;
+  max-height: 80vh; overflow-y: auto;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modal-backdrop.open .modal { transform: translateY(0); }
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--text-dim); border-radius: 2px;
+  margin: 0 auto 16px;
+}
+.modal h2 {
+  font-family: var(--font-display);
+  font-size: 18px; font-weight: 700;
+  margin-bottom: 16px;
+}
+.modal label {
+  display: block;
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.modal input[type="url"], .modal input[type="text"] {
+  width: 100%; padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px; color: var(--text);
+}
+.modal input:focus { border-color: var(--accent-dim); outline: none; }
+.modal .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+.modal .btn-row button {
+  flex: 1; padding: 12px;
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+.modal .btn-primary { background: var(--accent); color: #0a1018; }
+.modal .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+.modal .hint { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.4; }
+.modal .section { margin-bottom: 20px; }
+.modal .section:last-child { margin-bottom: 0; }
+
+/* ── Scroll to top helper ── */
+.channel-count {
+  font-size: 12px; color: var(--text-dim);
+  padding: 8px 0 4px;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+</style>
+</head>
+<body>
+
+<!-- Splash Screen -->
+<div class="splash" id="splash">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/>
+  </svg>
+  <h2>TV Argentina</h2>
+  <div class="spinner"></div>
+</div>
+
+<!-- Header -->
+<header class="header" id="header">
+  <div class="header-top">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <h1>TV Argentina</h1>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="castBtnHeader" title="Enviar a Chromecast" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
+          <circle cx="2" cy="20" r="0.8" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" title="Configuración">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="search" id="searchInput" placeholder="Buscar canales..." autocomplete="off">
+    <button class="search-clear" id="searchClear">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <nav class="categories" id="categories"></nav>
+</header>
+
+<!-- Main Content -->
+<main class="content" id="content"></main>
+
+<!-- Player Panel -->
+<div class="player-panel" id="playerPanel">
+  <div class="player-header">
+    <div class="player-ch-info">
+      <img class="player-ch-logo" id="playerLogo" src="" alt="">
+      <div class="player-ch-text">
+        <div class="player-ch-name" id="playerName">-</div>
+        <div class="player-ch-group" id="playerGroup">-</div>
+      </div>
+    </div>
+    <div class="player-actions">
+      <button class="icon-btn" id="castBtnPlayer" title="Enviar a Chromecast" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
+          <circle cx="2" cy="20" r="0.8" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="fullscreenBtn" title="Pantalla completa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="closePlayerBtn" title="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div class="video-wrap" id="videoWrap">
+    <video id="video" playsinline autoplay></video>
+    <div class="video-overlay" id="videoOverlay">
+      <div class="spinner"></div>
+      <p id="overlayText">Conectando...</p>
+      <button class="btn" id="overlayBtn" style="display:none">Reintentar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Configuración</h2>
+    <div class="section">
+      <label for="m3uInput">URL de la lista M3U</label>
+      <input type="url" id="m3uInput" placeholder="https://iptv-org.github.io/iptv/countries/ar.m3u">
+      <p class="hint">Podés pegar la URL de cualquier lista M3U con canales IPTV. La lista predeterminada tiene canales argentinos de código abierto.</p>
+    </div>
+    <div class="section">
+      <label>Canales cargados</label>
+      <p class="hint" id="channelStats">-</p>
+    </div>
+    <div class="section">
+      <label>Chromecast</label>
+      <p class="hint" id="castStatus">Para enviar al Chromecast, tocá el ícono de Cast en el reproductor. Tu navegador Chrome detectará los dispositivos en tu red Wi-Fi.</p>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="settingsCancel">Cancelar</button>
+      <button class="btn-primary" id="settingsSave">Guardar y recargar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  const DEFAULT_M3U = 'https://iptv-org.github.io/iptv/countries/ar.m3u';
+
+  // ── State ──
+  let channels = [];
+  let filteredChannels = [];
+  let currentChannel = null;
+  let favorites = loadFavorites();
+  let activeCategory = 'Todos';
+  let searchQuery = '';
+  let hlsInstance = null;
+  let isFullscreen = false;
+  let castAvailable = false;
+
+  // ── DOM refs ──
+  const $ = id => document.getElementById(id);
+  const splash = $('splash');
+  const searchInput = $('searchInput');
+  const searchClear = $('searchClear');
+  const categoriesNav = $('categories');
+  const content = $('content');
+  const playerPanel = $('playerPanel');
+  const video = $('video');
+  const videoOverlay = $('videoOverlay');
+  const overlayText = $('overlayText');
+  const overlayBtn = $('overlayBtn');
+  const playerLogo = $('playerLogo');
+  const playerName = $('playerName');
+  const playerGroup = $('playerGroup');
+  const castBtnHeader = $('castBtnHeader');
+  const castBtnPlayer = $('castBtnPlayer');
+  const settingsModal = $('settingsModal');
+  const m3uInput = $('m3uInput');
+
+  // ── Init ──
+  async function init() {
+    const m3uUrl = loadM3UUrl();
+    m3uInput.value = m3uUrl;
+
+    try {
+      const m3uText = await fetchM3U(m3uUrl);
+      channels = parseM3U(m3uText);
+      if (channels.length === 0) throw new Error('No channels found');
+      renderCategories();
+      filterAndRender();
+      splash.classList.add('fade-out');
+      setTimeout(() => splash.remove(), 500);
+    } catch (err) {
+      splash.innerHTML = `
+        <div class="state-screen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <h2>No se pudo cargar</h2>
+          <p>${escapeHtml(err.message || 'Error al obtener la lista de canales')}</p>
+          <button class="btn" onclick="location.reload()">Reintentar</button>
+        </div>`;
+    }
+
+    initCast();
+    bindEvents();
+  }
+
+  // ── Fetch M3U ──
+  async function fetchM3U(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.text();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  // ── Parse M3U ──
+  function parseM3U(text) {
+    const lines = text.split(/\r?\n/);
+    const result = [];
+    let info = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('#EXTINF:')) {
+        const nameMatch = line.match(/,(.+)$/);
+        const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+        const groupMatch = line.match(/group-title="([^"]*)"/);
+        info = {
+          name: nameMatch ? nameMatch[1].trim() : 'Canal desconocido',
+          logo: logoMatch ? logoMatch[1] : '',
+          group: groupMatch ? groupMatch[1] || 'Otros' : 'Otros',
+        };
+      } else if (info && line && !line.startsWith('#')) {
+        info.url = line;
+        info.id = info.name.toLowerCase().replace(/\s+/g, '-');
+        result.push(info);
+        info = null;
+      }
+    }
+
+    result.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    return result;
+  }
+
+  // ── Categories ──
+  function getCategories() {
+    const groups = new Set();
+    channels.forEach(ch => groups.add(ch.group));
+    const sorted = [...groups].sort((a, b) => a.localeCompare(b, 'es'));
+    return ['Todos', ...sorted];
+  }
+
+  function renderCategories() {
+    const cats = getCategories();
+    let html = `<button class="pill fav-pill ${activeCategory === 'Favoritos' ? 'active' : ''}" data-cat="Favoritos">★ Favoritos</button>`;
+    cats.forEach(cat => {
+      html += `<button class="pill ${activeCategory === cat ? 'active' : ''}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+    });
+    categoriesNav.innerHTML = html;
+  }
+
+  // ── Filter & Render ──
+  function filterAndRender() {
+    const q = searchQuery.toLowerCase();
+    filteredChannels = channels.filter(ch => {
+      if (activeCategory === 'Favoritos') {
+        if (!favorites.includes(ch.name)) return false;
+      } else if (activeCategory !== 'Todos') {
+        if (ch.group !== activeCategory) return false;
+      }
+      if (q && !ch.name.toLowerCase().includes(q) && !ch.group.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    renderChannels();
+  }
+
+  function renderChannels() {
+    if (filteredChannels.length === 0) {
+      const msg = activeCategory === 'Favoritos'
+        ? 'Todavía no tenés favoritos. Tocá la ★ en un canal para agregarlo.'
+        : searchQuery
+          ? `No se encontraron canales para "${escapeHtml(searchQuery)}"`
+          : 'No hay canales en esta categoría';
+      content.innerHTML = `
+        <div class="state-screen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <h2>Sin resultados</h2>
+          <p>${msg}</p>
+        </div>`;
+      return;
+    }
+
+    let html = `<div class="channel-count">${filteredChannels.length} canal${filteredChannels.length !== 1 ? 'es' : ''}</div><div class="grid">`;
+
+    filteredChannels.forEach((ch, i) => {
+      const isPlaying = currentChannel && currentChannel.url === ch.url;
+      const isFav = favorites.includes(ch.name);
+      html += `
+        <div class="channel-card ${isPlaying ? 'playing' : ''}" data-index="${i}">
+          <div class="card-thumb">
+            ${ch.logo
+              ? `<img src="${escapeHtml(ch.logo)}" alt="" loading="lazy" onerror="this.replaceWith(document.querySelector('#tmplPlaceholder').content.cloneNode(true))">`
+              : `<div class="placeholder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>`
+            }
+            ${isPlaying ? '<div class="card-playing-badge"><span class="dot"></span>EN VIVO</div>' : ''}
+            <button class="card-fav-btn ${isFav ? 'is-fav' : ''}" data-fav="${i}" title="${isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
+              <svg viewBox="0 0 24 24" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+          </div>
+          <div class="card-info">
+            <div class="card-name" title="${escapeHtml(ch.name)}">${escapeHtml(ch.name)}</div>
+            <div class="card-group">${escapeHtml(ch.group)}</div>
+          </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    content.innerHTML = html;
+    $('channelStats').textContent = `${channels.length} canales cargados en ${getCategories().length - 1} categorías`;
+  }
+
+  // ── Play Channel ──
+  function playChannel(ch) {
+    currentChannel = ch;
+    playerName.textContent = ch.name;
+    playerGroup.textContent = ch.group;
+    if (ch.logo) {
+      playerLogo.src = ch.logo;
+      playerLogo.style.display = '';
+    } else {
+      playerLogo.style.display = 'none';
+    }
+
+    showOverlay('Conectando...');
+    overlayBtn.style.display = 'none';
+    playerPanel.classList.add('open');
+    filterAndRender();
+
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+
+    const streamUrl = ch.url;
+
+    if (Hls.isSupported()) {
+      hlsInstance = new Hls({
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        startLevel: -1,
+        enableWorker: true,
+      });
+      hlsInstance.loadSource(streamUrl);
+      hlsInstance.attachMedia(video);
+
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {});
+        hideOverlay();
+      });
+
+      hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              showOverlay('Error de conexión');
+              overlayBtn.style.display = '';
+              overlayBtn.textContent = 'Reintentar';
+              overlayBtn.onclick = () => playChannel(ch);
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hlsInstance.recoverMediaError();
+              break;
+            default:
+              showOverlay('No se puede reproducir este canal');
+              overlayBtn.style.display = '';
+              overlayBtn.textContent = 'Copiar URL';
+              overlayBtn.onclick = () => {
+                navigator.clipboard.writeText(streamUrl).then(() => {
+                  overlayBtn.textContent = '¡Copiada!';
+                  setTimeout(() => { overlayBtn.textContent = 'Copiar URL'; }, 2000);
+                }).catch(() => {});
+              };
+              break;
+          }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch(() => {});
+        hideOverlay();
+      }, { once: true });
+      video.addEventListener('error', () => {
+        showOverlay('No se puede reproducir este canal');
+        overlayBtn.style.display = '';
+        overlayBtn.textContent = 'Reintentar';
+        overlayBtn.onclick = () => playChannel(ch);
+      }, { once: true });
+    } else {
+      showOverlay('Tu navegador no soporta HLS');
+      overlayBtn.style.display = '';
+      overlayBtn.textContent = 'Copiar URL';
+      overlayBtn.onclick = () => {
+        navigator.clipboard.writeText(streamUrl).then(() => {
+          overlayBtn.textContent = '¡Copiada!';
+        }).catch(() => {});
+      };
+    }
+  }
+
+  function stopPlayback() {
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+    video.removeAttribute('src');
+    video.load();
+    currentChannel = null;
+    playerPanel.classList.remove('open', 'fullscreen');
+    isFullscreen = false;
+    filterAndRender();
+  }
+
+  function showOverlay(text) {
+    overlayText.textContent = text;
+    videoOverlay.classList.add('visible');
+  }
+
+  function hideOverlay() {
+    videoOverlay.classList.remove('visible');
+  }
+
+  // ── Cast (Remote Playback API) ──
+  function initCast() {
+    if (!('remote' in HTMLVideoElement.prototype)) return;
+
+    try {
+      video.remote.watchAvailability(available => {
+        castAvailable = available;
+        castBtnHeader.style.display = available ? '' : 'none';
+        castBtnPlayer.style.display = available ? '' : 'none';
+      }).catch(() => {
+        castBtnHeader.style.display = '';
+        castBtnPlayer.style.display = '';
+      });
+    } catch (e) {
+      // Show cast buttons anyway — prompt() still works
+      castBtnHeader.style.display = '';
+      castBtnPlayer.style.display = '';
+    }
+
+    video.remote.addEventListener('connecting', () => {
+      showOverlay('Conectando al Chromecast...');
+    });
+    video.remote.addEventListener('connect', () => {
+      hideOverlay();
+      castBtnHeader.classList.add('cast-active');
+      castBtnPlayer.classList.add('cast-active');
+    });
+    video.remote.addEventListener('disconnect', () => {
+      castBtnHeader.classList.remove('cast-active');
+      castBtnPlayer.classList.remove('cast-active');
+      if (currentChannel) playChannel(currentChannel);
+    });
+  }
+
+  function startCast() {
+    if (!currentChannel) return;
+    if (!video.remote) {
+      alert('Tu navegador no soporta la función de Cast. Usá Chrome en Android.');
+      return;
+    }
+
+    // For casting, we need a direct URL (not blob: from HLS.js)
+    // Detach HLS.js and set direct source
+    const streamUrl = currentChannel.url;
+    if (hlsInstance) {
+      hlsInstance.detachMedia();
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+    video.src = streamUrl;
+
+    video.remote.prompt().catch(err => {
+      // User cancelled — re-attach HLS.js
+      if (currentChannel) playChannel(currentChannel);
+    });
+  }
+
+  // ── Fullscreen ──
+  function toggleFullscreen() {
+    if (isFullscreen) {
+      playerPanel.classList.remove('fullscreen');
+      isFullscreen = false;
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } else {
+      playerPanel.classList.add('fullscreen');
+      isFullscreen = true;
+      playerPanel.requestFullscreen?.().catch(() => {});
+    }
+  }
+
+  // ── Favorites ──
+  function loadFavorites() {
+    try { return JSON.parse(localStorage.getItem('tv_ar_favs') || '[]'); }
+    catch { return []; }
+  }
+
+  function saveFavorites() {
+    try { localStorage.setItem('tv_ar_favs', JSON.stringify(favorites)); }
+    catch {}
+  }
+
+  function toggleFavorite(name) {
+    const idx = favorites.indexOf(name);
+    if (idx >= 0) favorites.splice(idx, 1);
+    else favorites.push(name);
+    saveFavorites();
+    filterAndRender();
+  }
+
+  // ── M3U URL ──
+  function loadM3UUrl() {
+    try { return localStorage.getItem('tv_ar_m3u') || DEFAULT_M3U; }
+    catch { return DEFAULT_M3U; }
+  }
+
+  function saveM3UUrl(url) {
+    try { localStorage.setItem('tv_ar_m3u', url || DEFAULT_M3U); }
+    catch {}
+  }
+
+  // ── Helpers ──
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ── Events ──
+  function bindEvents() {
+    // Search
+    searchInput.addEventListener('input', () => {
+      searchQuery = searchInput.value.trim();
+      searchClear.classList.toggle('visible', searchQuery.length > 0);
+      filterAndRender();
+    });
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchQuery = '';
+      searchClear.classList.remove('visible');
+      filterAndRender();
+    });
+
+    // Categories
+    categoriesNav.addEventListener('click', e => {
+      const pill = e.target.closest('.pill');
+      if (!pill) return;
+      activeCategory = pill.dataset.cat;
+      renderCategories();
+      filterAndRender();
+    });
+
+    // Channel cards
+    content.addEventListener('click', e => {
+      const favBtn = e.target.closest('.card-fav-btn');
+      if (favBtn) {
+        e.stopPropagation();
+        const idx = parseInt(favBtn.dataset.fav);
+        toggleFavorite(filteredChannels[idx].name);
+        return;
+      }
+      const card = e.target.closest('.channel-card');
+      if (card) {
+        const idx = parseInt(card.dataset.index);
+        playChannel(filteredChannels[idx]);
+      }
+    });
+
+    // Player controls
+    $('closePlayerBtn').addEventListener('click', stopPlayback);
+    $('fullscreenBtn').addEventListener('click', toggleFullscreen);
+    castBtnHeader.addEventListener('click', startCast);
+    castBtnPlayer.addEventListener('click', startCast);
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        playerPanel.classList.remove('fullscreen');
+        isFullscreen = false;
+      }
+    });
+
+    // Settings
+    $('settingsBtn').addEventListener('click', () => {
+      m3uInput.value = loadM3UUrl();
+      settingsModal.classList.add('open');
+    });
+    $('settingsCancel').addEventListener('click', () => settingsModal.classList.remove('open'));
+    settingsModal.addEventListener('click', e => {
+      if (e.target === settingsModal) settingsModal.classList.remove('open');
+    });
+    $('settingsSave').addEventListener('click', () => {
+      const url = m3uInput.value.trim() || DEFAULT_M3U;
+      saveM3UUrl(url);
+      settingsModal.classList.remove('open');
+      location.reload();
+    });
+
+    // Video tap to toggle overlay visibility
+    video.addEventListener('click', () => {
+      if (isFullscreen) {
+        const header = playerPanel.querySelector('.player-header');
+        header.style.opacity = header.style.opacity === '0' ? '1' : '0';
+      }
+    });
+  }
+
+  // ── Placeholder template ──
+  const tmpl = document.createElement('template');
+  tmpl.id = 'tmplPlaceholder';
+  tmpl.innerHTML = '<div class="placeholder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>';
+  document.body.appendChild(tmpl);
+
+  // ── Service Worker ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // ── Go ──
+  init();
+})();
+</script>
+</body>
+</html>
