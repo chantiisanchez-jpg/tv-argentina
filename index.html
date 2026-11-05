@@ -447,7 +447,7 @@ a { color: var(--accent); text-decoration: none; }
       <h1>TV Argentina</h1>
     </div>
     <div class="header-actions">
-      <button class="icon-btn" id="castBtnHeader" title="Enviar a Chromecast" style="display:none">
+      <button class="icon-btn" id="castBtnHeader" title="Enviar a Chromecast">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
           <circle cx="2" cy="20" r="0.8" fill="currentColor"/>
@@ -488,7 +488,7 @@ a { color: var(--accent); text-decoration: none; }
       </div>
     </div>
     <div class="player-actions">
-      <button class="icon-btn" id="castBtnPlayer" title="Enviar a Chromecast" style="display:none">
+      <button class="icon-btn" id="castBtnPlayer" title="Enviar a Chromecast">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/>
           <circle cx="2" cy="20" r="0.8" fill="currentColor"/>
@@ -511,7 +511,11 @@ a { color: var(--accent); text-decoration: none; }
     <div class="video-overlay" id="videoOverlay">
       <div class="spinner"></div>
       <p id="overlayText">Conectando...</p>
-      <button class="btn" id="overlayBtn" style="display:none">Reintentar</button>
+      <div id="overlayActions" style="display:none;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button class="btn" id="overlayBtn">Reintentar</button>
+        <button class="btn" id="overlayCastBtn" style="display:none">Enviar a Chromecast</button>
+        <button class="btn" id="overlayExtBtn" style="display:none">Abrir en reproductor externo</button>
+      </div>
     </div>
   </div>
 </div>
@@ -541,12 +545,17 @@ a { color: var(--accent); text-decoration: none; }
   </div>
 </div>
 
+<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
 <script>
 (function() {
   'use strict';
 
   const DEFAULT_M3U = 'https://iptv-org.github.io/iptv/countries/ar.m3u';
+  const CORS_PROXIES = [
+    url => 'https://corsproxy.io/?' + encodeURIComponent(url),
+    url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+  ];
 
   // ── State ──
   let channels = [];
@@ -557,6 +566,7 @@ a { color: var(--accent); text-decoration: none; }
   let searchQuery = '';
   let hlsInstance = null;
   let isFullscreen = false;
+  let castSessionActive = false;
   let castAvailable = false;
 
   // ── DOM refs ──
@@ -571,6 +581,9 @@ a { color: var(--accent); text-decoration: none; }
   const videoOverlay = $('videoOverlay');
   const overlayText = $('overlayText');
   const overlayBtn = $('overlayBtn');
+  const overlayActions = $('overlayActions');
+  const overlayCastBtn = $('overlayCastBtn');
+  const overlayExtBtn = $('overlayExtBtn');
   const playerLogo = $('playerLogo');
   const playerName = $('playerName');
   const playerGroup = $('playerGroup');
@@ -587,7 +600,7 @@ a { color: var(--accent); text-decoration: none; }
     try {
       const m3uText = await fetchM3U(m3uUrl);
       channels = parseM3U(m3uText);
-      if (channels.length === 0) throw new Error('No channels found');
+      if (channels.length === 0) throw new Error('No se encontraron canales');
       renderCategories();
       filterAndRender();
       splash.classList.add('fade-out');
@@ -604,7 +617,7 @@ a { color: var(--accent); text-decoration: none; }
         </div>`;
     }
 
-    initCast();
+    initGoogleCast();
     bindEvents();
   }
 
@@ -732,7 +745,7 @@ a { color: var(--accent); text-decoration: none; }
   }
 
   // ── Play Channel ──
-  function playChannel(ch) {
+  function playChannel(ch, proxyIndex) {
     currentChannel = ch;
     playerName.textContent = ch.name;
     playerGroup.textContent = ch.group;
@@ -743,8 +756,8 @@ a { color: var(--accent); text-decoration: none; }
       playerLogo.style.display = 'none';
     }
 
-    showOverlay('Conectando...');
-    overlayBtn.style.display = 'none';
+    showOverlay(proxyIndex > 0 ? 'Reintentando con proxy...' : 'Conectando...');
+    hideOverlayActions();
     playerPanel.classList.add('open');
     filterAndRender();
 
@@ -754,14 +767,24 @@ a { color: var(--accent); text-decoration: none; }
     }
 
     const streamUrl = ch.url;
+    const useProxy = typeof proxyIndex === 'number' && proxyIndex >= 0 && proxyIndex < CORS_PROXIES.length;
 
     if (Hls.isSupported()) {
-      hlsInstance = new Hls({
+      const hlsConfig = {
         maxBufferLength: 30,
         maxMaxBufferLength: 60,
         startLevel: -1,
         enableWorker: true,
-      });
+      };
+
+      if (useProxy) {
+        const proxyFn = CORS_PROXIES[proxyIndex];
+        hlsConfig.xhrSetup = function(xhr, url) {
+          xhr.open('GET', proxyFn(url), true);
+        };
+      }
+
+      hlsInstance = new Hls(hlsConfig);
       hlsInstance.loadSource(streamUrl);
       hlsInstance.attachMedia(video);
 
@@ -771,30 +794,24 @@ a { color: var(--accent); text-decoration: none; }
       });
 
       hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              showOverlay('Error de conexión');
-              overlayBtn.style.display = '';
-              overlayBtn.textContent = 'Reintentar';
-              overlayBtn.onclick = () => playChannel(ch);
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hlsInstance.recoverMediaError();
-              break;
-            default:
-              showOverlay('No se puede reproducir este canal');
-              overlayBtn.style.display = '';
-              overlayBtn.textContent = 'Copiar URL';
-              overlayBtn.onclick = () => {
-                navigator.clipboard.writeText(streamUrl).then(() => {
-                  overlayBtn.textContent = '¡Copiada!';
-                  setTimeout(() => { overlayBtn.textContent = 'Copiar URL'; }, 2000);
-                }).catch(() => {});
-              };
-              break;
-          }
+        if (!data.fatal) return;
+
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hlsInstance.recoverMediaError();
+          return;
         }
+
+        // Network error: try next proxy or show error with alternatives
+        const nextProxy = (typeof proxyIndex === 'number') ? proxyIndex + 1 : 0;
+
+        if (nextProxy < CORS_PROXIES.length) {
+          playChannel(ch, nextProxy);
+          return;
+        }
+
+        // All proxies failed — show alternatives
+        showOverlay('No se puede reproducir en el navegador');
+        showErrorActions(ch);
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = streamUrl;
@@ -804,20 +821,46 @@ a { color: var(--accent); text-decoration: none; }
       }, { once: true });
       video.addEventListener('error', () => {
         showOverlay('No se puede reproducir este canal');
-        overlayBtn.style.display = '';
-        overlayBtn.textContent = 'Reintentar';
-        overlayBtn.onclick = () => playChannel(ch);
+        showErrorActions(ch);
       }, { once: true });
     } else {
       showOverlay('Tu navegador no soporta HLS');
-      overlayBtn.style.display = '';
-      overlayBtn.textContent = 'Copiar URL';
-      overlayBtn.onclick = () => {
-        navigator.clipboard.writeText(streamUrl).then(() => {
-          overlayBtn.textContent = '¡Copiada!';
-        }).catch(() => {});
-      };
+      showErrorActions(ch);
     }
+  }
+
+  function showErrorActions(ch) {
+    overlayActions.style.display = 'flex';
+    overlayBtn.textContent = 'Copiar URL';
+    overlayBtn.style.display = '';
+    overlayBtn.onclick = () => {
+      navigator.clipboard.writeText(ch.url).then(() => {
+        overlayBtn.textContent = '¡Copiada!';
+        setTimeout(() => { overlayBtn.textContent = 'Copiar URL'; }, 2000);
+      }).catch(() => {
+        prompt('Copiá esta URL:', ch.url);
+      });
+    };
+
+    if (castAvailable) {
+      overlayCastBtn.style.display = '';
+      overlayCastBtn.onclick = () => startCast();
+    }
+
+    // External player intent (works on Android)
+    overlayExtBtn.style.display = '';
+    overlayExtBtn.onclick = () => {
+      const intentUrl = 'intent://' + ch.url.replace(/^https?:\/\//, '') +
+        '#Intent;scheme=' + (ch.url.startsWith('https') ? 'https' : 'http') +
+        ';type=video/*;end';
+      window.location.href = intentUrl;
+    };
+  }
+
+  function hideOverlayActions() {
+    overlayActions.style.display = 'none';
+    overlayCastBtn.style.display = 'none';
+    overlayExtBtn.style.display = 'none';
   }
 
   function stopPlayback() {
@@ -842,60 +885,98 @@ a { color: var(--accent); text-decoration: none; }
     videoOverlay.classList.remove('visible');
   }
 
-  // ── Cast (Remote Playback API) ──
-  function initCast() {
-    if (!('remote' in HTMLVideoElement.prototype)) return;
-
-    try {
-      video.remote.watchAvailability(available => {
-        castAvailable = available;
-        castBtnHeader.style.display = available ? '' : 'none';
-        castBtnPlayer.style.display = available ? '' : 'none';
-      }).catch(() => {
-        castBtnHeader.style.display = '';
-        castBtnPlayer.style.display = '';
-      });
-    } catch (e) {
-      // Show cast buttons anyway — prompt() still works
-      castBtnHeader.style.display = '';
-      castBtnPlayer.style.display = '';
-    }
-
-    video.remote.addEventListener('connecting', () => {
-      showOverlay('Conectando al Chromecast...');
-    });
-    video.remote.addEventListener('connect', () => {
-      hideOverlay();
-      castBtnHeader.classList.add('cast-active');
-      castBtnPlayer.classList.add('cast-active');
-    });
-    video.remote.addEventListener('disconnect', () => {
-      castBtnHeader.classList.remove('cast-active');
-      castBtnPlayer.classList.remove('cast-active');
-      if (currentChannel) playChannel(currentChannel);
-    });
-  }
-
-  function startCast() {
-    if (!currentChannel) return;
-    if (!video.remote) {
-      alert('Tu navegador no soporta la función de Cast. Usá Chrome en Android.');
+  // ── Google Cast SDK ──
+  function initGoogleCast() {
+    if (typeof cast === 'undefined' || typeof chrome === 'undefined' || !chrome.cast) {
+      $('castStatus').textContent = 'Google Cast no está disponible en este navegador. Usá Chrome en Android para enviar al Chromecast.';
       return;
     }
 
-    // For casting, we need a direct URL (not blob: from HLS.js)
-    // Detach HLS.js and set direct source
-    const streamUrl = currentChannel.url;
-    if (hlsInstance) {
-      hlsInstance.detachMedia();
-      hlsInstance.destroy();
-      hlsInstance = null;
-    }
-    video.src = streamUrl;
+    try {
+      cast.framework.CastContext.getInstance().setOptions({
+        receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+      });
 
-    video.remote.prompt().catch(err => {
-      // User cancelled — re-attach HLS.js
-      if (currentChannel) playChannel(currentChannel);
+      cast.framework.CastContext.getInstance().addEventListener(
+        cast.framework.CastContextEventType.CAST_STATE_CHANGED,
+        (event) => {
+          castAvailable = event.castState !== cast.framework.CastState.NO_DEVICES_AVAILABLE;
+          updateCastUI();
+        }
+      );
+
+      cast.framework.CastContext.getInstance().addEventListener(
+        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+        (event) => {
+          castSessionActive = event.sessionState === cast.framework.SessionState.SESSION_STARTED ||
+                              event.sessionState === cast.framework.SessionState.SESSION_RESUMED;
+          updateCastUI();
+        }
+      );
+    } catch (e) {
+      console.log('Cast init error:', e);
+    }
+  }
+
+  window['__onGCastApiAvailable'] = function(isAvailable) {
+    if (isAvailable) initGoogleCast();
+  };
+
+  function updateCastUI() {
+    if (castSessionActive) {
+      castBtnHeader.classList.add('cast-active');
+      castBtnPlayer.classList.add('cast-active');
+    } else {
+      castBtnHeader.classList.remove('cast-active');
+      castBtnPlayer.classList.remove('cast-active');
+    }
+  }
+
+  function startCast() {
+    if (typeof cast === 'undefined') {
+      // Fallback: try Remote Playback API
+      if (currentChannel && video.remote) {
+        const url = currentChannel.url;
+        if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.destroy(); hlsInstance = null; }
+        video.src = url;
+        video.remote.prompt().catch(() => { if (currentChannel) playChannel(currentChannel); });
+        return;
+      }
+      prompt('Copiá esta URL y abrila en VLC o un reproductor IPTV:', currentChannel ? currentChannel.url : '');
+      return;
+    }
+
+    const context = cast.framework.CastContext.getInstance();
+
+    if (!castSessionActive) {
+      context.requestSession().then(() => {
+        if (currentChannel) loadMediaOnCast(currentChannel.url, currentChannel.name);
+      }).catch(() => {});
+    } else if (currentChannel) {
+      loadMediaOnCast(currentChannel.url, currentChannel.name);
+    }
+  }
+
+  function loadMediaOnCast(url, title) {
+    const session = cast.framework.CastContext.getInstance().getCurrentSession();
+    if (!session) return;
+
+    const mediaInfo = new chrome.cast.media.MediaInfo(url, 'application/x-mpegURL');
+    mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+    mediaInfo.metadata.title = title;
+
+    const request = new chrome.cast.media.LoadRequest(mediaInfo);
+    session.loadMedia(request).then(() => {
+      showOverlay('Reproduciendo en Chromecast');
+      overlayText.textContent = '📺 Reproduciendo en Chromecast';
+      setTimeout(hideOverlay, 2000);
+    }).catch((err) => {
+      showOverlay('Error al enviar al Chromecast');
+      overlayActions.style.display = 'flex';
+      overlayBtn.style.display = '';
+      overlayBtn.textContent = 'Reintentar';
+      overlayBtn.onclick = () => loadMediaOnCast(url, title);
     });
   }
 
@@ -953,7 +1034,6 @@ a { color: var(--accent); text-decoration: none; }
 
   // ── Events ──
   function bindEvents() {
-    // Search
     searchInput.addEventListener('input', () => {
       searchQuery = searchInput.value.trim();
       searchClear.classList.toggle('visible', searchQuery.length > 0);
@@ -966,7 +1046,6 @@ a { color: var(--accent); text-decoration: none; }
       filterAndRender();
     });
 
-    // Categories
     categoriesNav.addEventListener('click', e => {
       const pill = e.target.closest('.pill');
       if (!pill) return;
@@ -975,7 +1054,6 @@ a { color: var(--accent); text-decoration: none; }
       filterAndRender();
     });
 
-    // Channel cards
     content.addEventListener('click', e => {
       const favBtn = e.target.closest('.card-fav-btn');
       if (favBtn) {
@@ -991,7 +1069,6 @@ a { color: var(--accent); text-decoration: none; }
       }
     });
 
-    // Player controls
     $('closePlayerBtn').addEventListener('click', stopPlayback);
     $('fullscreenBtn').addEventListener('click', toggleFullscreen);
     castBtnHeader.addEventListener('click', startCast);
@@ -1004,7 +1081,6 @@ a { color: var(--accent); text-decoration: none; }
       }
     });
 
-    // Settings
     $('settingsBtn').addEventListener('click', () => {
       m3uInput.value = loadM3UUrl();
       settingsModal.classList.add('open');
@@ -1020,7 +1096,6 @@ a { color: var(--accent); text-decoration: none; }
       location.reload();
     });
 
-    // Video tap to toggle overlay visibility
     video.addEventListener('click', () => {
       if (isFullscreen) {
         const header = playerPanel.querySelector('.player-header');
@@ -1035,12 +1110,10 @@ a { color: var(--accent); text-decoration: none; }
   tmpl.innerHTML = '<div class="placeholder-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 16 21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>';
   document.body.appendChild(tmpl);
 
-  // ── Service Worker ──
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
-  // ── Go ──
   init();
 })();
 </script>
