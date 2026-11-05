@@ -756,9 +756,8 @@ a { color: var(--accent); text-decoration: none; }
       playerLogo.style.display = 'none';
     }
 
-    showOverlay(proxyIndex > 0 ? 'Reintentando con proxy...' : 'Conectando...');
-    hideOverlayActions();
     playerPanel.classList.add('open');
+    hideOverlayActions();
     filterAndRender();
 
     if (hlsInstance) {
@@ -767,7 +766,25 @@ a { color: var(--accent); text-decoration: none; }
     }
 
     const streamUrl = ch.url;
-    const useProxy = typeof proxyIndex === 'number' && proxyIndex >= 0 && proxyIndex < CORS_PROXIES.length;
+    const isHttpStream = streamUrl.startsWith('http://');
+    const isHttpsPage = location.protocol === 'https:';
+
+    // HTTP stream on HTTPS page = Mixed Content, browser will always block it
+    if (isHttpStream && isHttpsPage) {
+      // Try one proxy quickly; if it fails, show alternatives fast
+      const pi = typeof proxyIndex === 'number' ? proxyIndex : 0;
+
+      if (pi < CORS_PROXIES.length) {
+        showOverlay(pi === 0 ? 'Conectando vía proxy...' : 'Probando otro proxy...');
+        tryHlsWithProxy(ch, streamUrl, pi);
+      } else {
+        showHttpBlockedActions(ch);
+      }
+      return;
+    }
+
+    // HTTPS stream — try direct first
+    showOverlay('Conectando...');
 
     if (Hls.isSupported()) {
       const hlsConfig = {
@@ -777,7 +794,9 @@ a { color: var(--accent); text-decoration: none; }
         enableWorker: true,
       };
 
-      if (useProxy) {
+      // If retrying with proxy (CORS error on HTTPS stream)
+      if (typeof proxyIndex === 'number' && proxyIndex < CORS_PROXIES.length) {
+        showOverlay('Reintentando con proxy...');
         const proxyFn = CORS_PROXIES[proxyIndex];
         hlsConfig.xhrSetup = function(xhr, url) {
           xhr.open('GET', proxyFn(url), true);
@@ -801,15 +820,12 @@ a { color: var(--accent); text-decoration: none; }
           return;
         }
 
-        // Network error: try next proxy or show error with alternatives
         const nextProxy = (typeof proxyIndex === 'number') ? proxyIndex + 1 : 0;
-
         if (nextProxy < CORS_PROXIES.length) {
           playChannel(ch, nextProxy);
           return;
         }
 
-        // All proxies failed — show alternatives
         showOverlay('No se puede reproducir en el navegador');
         showErrorActions(ch);
       });
@@ -829,6 +845,90 @@ a { color: var(--accent); text-decoration: none; }
     }
   }
 
+  function tryHlsWithProxy(ch, streamUrl, proxyIndex) {
+    if (!Hls.isSupported()) {
+      showHttpBlockedActions(ch);
+      return;
+    }
+
+    const proxyFn = CORS_PROXIES[proxyIndex];
+    const hlsConfig = {
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      startLevel: -1,
+      enableWorker: true,
+      manifestLoadingTimeOut: 8000,
+      manifestLoadingMaxRetry: 0,
+      levelLoadingTimeOut: 8000,
+      levelLoadingMaxRetry: 0,
+      fragLoadingTimeOut: 10000,
+      fragLoadingMaxRetry: 1,
+      xhrSetup: function(xhr, url) {
+        const proxied = url.startsWith('http://') || url.startsWith('https://')
+          ? proxyFn(url)
+          : proxyFn(url);
+        xhr.open('GET', proxied, true);
+      },
+    };
+
+    hlsInstance = new Hls(hlsConfig);
+    hlsInstance.loadSource(streamUrl);
+    hlsInstance.attachMedia(video);
+
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      video.play().catch(() => {});
+      hideOverlay();
+    });
+
+    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+      if (!data.fatal) return;
+
+      if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+        hlsInstance.recoverMediaError();
+        return;
+      }
+
+      const nextProxy = proxyIndex + 1;
+      if (nextProxy < CORS_PROXIES.length) {
+        playChannel(ch, nextProxy);
+      } else {
+        showHttpBlockedActions(ch);
+      }
+    });
+  }
+
+  function showHttpBlockedActions(ch) {
+    showOverlay('Canal no disponible en navegador web');
+    overlayActions.style.display = 'flex';
+
+    // Primary action: Cast to Chromecast
+    overlayCastBtn.style.display = '';
+    overlayCastBtn.textContent = '📺 Enviar a Chromecast';
+    overlayCastBtn.onclick = () => startCast();
+
+    // External player (VLC, MX Player, etc.)
+    overlayExtBtn.style.display = '';
+    overlayExtBtn.textContent = '▶ Abrir en reproductor';
+    overlayExtBtn.onclick = () => {
+      const intentUrl = 'intent://' + ch.url.replace(/^https?:\/\//, '') +
+        '#Intent;scheme=' + (ch.url.startsWith('https') ? 'https' : 'http') +
+        ';type=video/*;end';
+      window.location.href = intentUrl;
+    };
+
+    // Copy URL as fallback
+    overlayBtn.style.display = '';
+    overlayBtn.textContent = 'Copiar URL';
+    overlayBtn.onclick = () => {
+      navigator.clipboard.writeText(ch.url).then(() => {
+        overlayBtn.textContent = '¡Copiada!';
+        setTimeout(() => { overlayBtn.textContent = 'Copiar URL'; }, 2000);
+      }).catch(() => {
+        prompt('Copiá esta URL y abrila en VLC o un reproductor IPTV:', ch.url);
+      });
+    };
+  }
+
   function showErrorActions(ch) {
     overlayActions.style.display = 'flex';
     overlayBtn.textContent = 'Copiar URL';
@@ -842,13 +942,12 @@ a { color: var(--accent); text-decoration: none; }
       });
     };
 
-    if (castAvailable) {
-      overlayCastBtn.style.display = '';
-      overlayCastBtn.onclick = () => startCast();
-    }
+    overlayCastBtn.style.display = '';
+    overlayCastBtn.textContent = '📺 Enviar a Chromecast';
+    overlayCastBtn.onclick = () => startCast();
 
-    // External player intent (works on Android)
     overlayExtBtn.style.display = '';
+    overlayExtBtn.textContent = '▶ Abrir en reproductor';
     overlayExtBtn.onclick = () => {
       const intentUrl = 'intent://' + ch.url.replace(/^https?:\/\//, '') +
         '#Intent;scheme=' + (ch.url.startsWith('https') ? 'https' : 'http') +

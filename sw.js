@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tv-argentina-v2';
+const CACHE_NAME = 'tv-argentina-v3';
 const ASSETS = [
   './',
   './index.html',
